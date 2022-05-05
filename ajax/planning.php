@@ -35,11 +35,15 @@
 
 include ("../../../inc/includes.php");
 
-if (!isset($_REQUEST["action"])) {
+if (!isset($_REQUEST["action"]) && !isset($_GET['ticket_status'])) {
    exit;
 }
 
-if ($_REQUEST["action"]=="add_task") {
+if (isset($_GET["ticket_status"])) {
+   PluginTaskdropCalendar::showTicketStatusForm();
+}
+
+if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="add_task") {
 
    $query=[
       'SELECT'=>[
@@ -87,12 +91,13 @@ if ($_REQUEST["action"]=="add_task") {
 
    echo json_encode($event);
 } else {
-   if ($_REQUEST["action"]=="update_task") {
+   if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="update_task") {
       $div= PluginTaskdropCalendar::addTask();
+      $div.= PluginTaskdropCalendar::addTicket();
       $div.=PluginTaskdropCalendar::addReminder();
       echo $div;
    }else{
-      if ($_REQUEST["action"]=="add_reminder") {
+      if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="add_reminder") {
          $end=date("Y-m-d H:i", strtotime($_REQUEST['start']." +30 minutes"));
          $DB->update(
             'glpi_reminders', [
@@ -115,3 +120,4 @@ if ($_REQUEST["action"]=="add_task") {
       }
    }
 }
+
