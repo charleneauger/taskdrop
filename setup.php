@@ -63,6 +63,13 @@ function plugin_taskdrop_check_config($verbose = false) {
 function plugin_init_taskdrop() {
    global $PLUGIN_HOOKS;
 
+   // Register profile class
+   Plugin::registerClass(PluginTaskdropProfile::class, array('addtabon' => 'Profile'));
+
+   if(Session::haveRight(PluginTaskdropCalendar::class, READ)) {
+      $PLUGIN_HOOKS['post_show_tab']['taskdrop']=[PluginTaskdropCalendar::class,'listTask'];
+      $PLUGIN_HOOKS['add_javascript']['taskdrop'][] = 'js/calendar.js';
+   }
+
    $PLUGIN_HOOKS['csrf_compliant']['taskdrop'] = true;
-   $PLUGIN_HOOKS['post_show_tab']['taskdrop']=['PluginTaskdropCalendar','listTask'];
 }
