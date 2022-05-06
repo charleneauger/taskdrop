@@ -53,14 +53,20 @@ $(function() {
    }
 
    this.showTicketStatus = function () {
+      var RegexUrl = /^(.*)front\/.*\.php/;
+      var RegexUrlRes = RegexUrl.exec(window.location.pathname);
+
       modalWindow.load(
-         '/glpi/plugins/taskdrop/ajax/planning.php?ticket_status=update_ticket_status'
+         RegexUrlRes[1]+'plugins/taskdrop/ajax/planning.php?ticket_status=update_ticket_status'
       ).dialog('open');
    }
 
    this.showCreateTask = function (id, date) {
+      var RegexUrl = /^(.*)front\/.*\.php/;
+      var RegexUrlRes = RegexUrl.exec(window.location.pathname);
+
       modalTask.load(
-         '/glpi/plugins/taskdrop/ajax/planning.php?create_task='+id+"&start="+date
+         RegexUrlRes[1]+'plugins/taskdrop/ajax/planning.php?create_task='+id+"&start="+date
       ).dialog('open');
    }
 
