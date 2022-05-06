@@ -110,6 +110,8 @@ class PluginTaskdropCalendar extends CommonDBTM{
 
       $div="<h3>".__('Tickets')." - ".$allStatus[$status]."<a class='planning_link planning_add_filter' href='javascript:plugin_Taskdrop.showTicketStatus();'><img class='pointer' id='ticket_status_filter' src='".$CFG_GLPI['root_doc']."/pics/menu_search.png'></a></h3>";
 
+      $ids = [];
+
       foreach ($_SESSION['glpi_plannings']['plannings'] as $key => $value) {
          if (preg_match('/^user_/', $key)) {
             if ($value['display']==1) {
@@ -137,7 +139,10 @@ class PluginTaskdropCalendar extends CommonDBTM{
                ];
 
                foreach ($DB->request($query) as $id => $row) {
-                  $div.="<div class='fc-event-external' style='padding:2px;margin:2px;background-color: ".$value['color'].";' tid=".$row['tickets_id']." action='create_task'>".Toolbox::addslashes_deep(HTML::clean($row['tickets_id']." - ".$row['name']))."</div>";
+                  if(!in_array($row['tickets_id'], $ids)) {
+                     $ids[] = $row['tickets_id'];
+                     $div.="<div class='fc-event-external' style='padding:2px;margin:2px;background-color:#cfcccc;' tid='".$row['tickets_id']."' action='create_task'>".Toolbox::addslashes_deep(HTML::clean($row['tickets_id']." - ".$row['name']))."</div>";
+                  }
                }
             }
          } elseif (preg_match('/^group_/', $key)){
@@ -166,7 +171,10 @@ class PluginTaskdropCalendar extends CommonDBTM{
                ];
 
                foreach ($DB->request($query) as $id => $row) {
-                  $div.="<div class='fc-event-external' style='padding:2px;margin:2px;background-color: ".$value['color'].";' tid=".$row['tickets_id']." action='create_task'>".Toolbox::addslashes_deep(HTML::clean($row['tickets_id']." - ".$row['name']))."</div>";
+                  if(!in_array($row['tickets_id'], $ids)) {
+                     $ids[] = $row['tickets_id'];
+                     $div.="<div class='fc-event-external' style='padding:2px;margin:2px;background-color:#cfcccc;' tid='".$row['tickets_id']."' action='create_task'>".Toolbox::addslashes_deep(HTML::clean($row['tickets_id']." - ".$row['name']))."</div>";
+                  }
                }
             }
          }
@@ -219,9 +227,17 @@ class PluginTaskdropCalendar extends CommonDBTM{
          return;
       }
       $div="<div id='external-events'>";
-      $div.=self::addTask();
-      $div.=self::addTicket();
-      $div.=self::addReminder();
+
+      if(Session::haveRight(PluginTaskdropCalendar::class, READTASK)) {
+         $div.=self::addTask();
+      }
+      if(Session::haveRight(PluginTaskdropCalendar::class, READTICKET)) {
+         $div.=self::addTicket();
+      }
+      if(Session::haveRight(PluginTaskdropCalendar::class, READREMINDER)) {
+         $div.=self::addReminder();
+      }
+      
       $div.="</div>";
 
       $ajax_url=Plugin::getWebDir('taskdrop')."/ajax/planning.php";
@@ -242,22 +258,27 @@ class PluginTaskdropCalendar extends CommonDBTM{
 			GLPIPlanning.calendar.setOption('dropAccept','.fc-event-external');
 			GLPIPlanning.calendar.setOption('dragRevertDuration',0);
 			GLPIPlanning.calendar.on('drop',function(dropInfo){
-				$.ajax({
-					url: '{$ajax_url}',
-					type: 'POST',
-					data:{
-						action: $(dropInfo.draggedEl).attr('action'),
-						start: dropInfo.date.toISOString(),
-						id: $(dropInfo.draggedEl).attr('tid')
-					},
-					success: function(event){
-                  $(dropInfo.draggedEl).remove();
-						GLPIPlanning.refresh();
-					},
-					error: function(xhr) {
-						alert('An error occured: '+ xhr.status + ' ' + xhr.statusText);
-					}
-				});
+            
+            if($(dropInfo.draggedEl).attr('action') == 'create_task') {
+               plugin_Taskdrop.showCreateTask($(dropInfo.draggedEl).attr('tid'), dropInfo.date.toISOString());
+            } else {
+               $.ajax({
+                  url: '{$ajax_url}',
+                  type: 'POST',
+                  data:{
+                     action: $(dropInfo.draggedEl).attr('action'),
+                     start: dropInfo.date.toISOString(),
+                     id: $(dropInfo.draggedEl).attr('tid')
+                  },
+                  success: function(event){
+                     $(dropInfo.draggedEl).remove();
+                     GLPIPlanning.refresh();
+                  },
+                  error: function(xhr) {
+                     alert('An error occured: '+ xhr.status + ' ' + xhr.statusText);
+                  }
+               });
+            }
 			});
 
 			$('#planning_filter li.user input[type="checkbox"],#planning_filter li.group input[type="checkbox"]').on('click',function(){
@@ -321,6 +342,44 @@ JAVASCRIPT;
     */
    static function sendTicketStatusForm($params = []) {
       $_SESSION['taskdrop']['tickets_status'] = $params['tickets_status'];
+   }
+   
+   /**
+    * showCreateTaskForm
+    *
+    * @param  Array $params
+    * @return void
+    */
+   static function showCreateTaskForm($params = []) {
+      if (!$params['itemtype'] instanceof CommonDBTM) {
+         echo "<div class='center'>";
+         echo "<a href='".$params['url']."'>".__("View this item in his context")."</a>";
+         echo "</div>";
+         echo "<hr>";
+         $rand = mt_rand();
+         $options = [
+            'from_planning_edit_ajax' => true,
+            'formoptions'             => "id='create_event_form$rand'",
+            'begin'                   => date("Y-m-d H:i", strtotime($params['begin'])),
+            'end'                     => date("Y-m-d H:i", strtotime($params['end'])),
+            'actiontime'              => 3600
+         ];
+         if (isset($params['parentitemtype'])) {
+            $option = $params;
+            $options['parent'] = getItemForItemtype($params['parentitemtype']);
+            $options['parent']->getFromDB($params['parentid']);
+         }
+         $item = getItemForItemtype($params['itemtype']);
+         $item->showForm(intval($params['id']), $options);
+         echo Html::scriptBlock(
+            "var viewplan = document.querySelectorAll('[id^=viewplan]')[0].id.split('viewplan');
+             eval('showPlan'+'0'+viewplan[1]+'()');"
+         );
+         $callback = "$('.ui-dialog-content').dialog('close');
+                      GLPIPlanning.refresh();
+                      displayAjaxMessageAfterRedirect();";
+         Html::ajaxForm("#create_event_form$rand", $callback);
+      }
    }
 
 }
