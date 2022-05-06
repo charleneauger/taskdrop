@@ -72,7 +72,7 @@ class PluginTaskdropProfile extends Profile {
 
 		if ($item->getType() == 'Profile') {
 			$id = $item->getID();
-			self::addRight(false);
+			self::addRight(false, 0);
 			$_profile->showForm($id);
 		}
 
@@ -87,7 +87,7 @@ class PluginTaskdropProfile extends Profile {
     */
    static function install(Migration $migration) {
 		// Create admin access
-      self::addRight($_SESSION['glpiactiveprofile']['id']);
+      self::addRight($_SESSION['glpiactiveprofile']['id'], READ + READTASK + READTICKET + READREMINDER);
 	}
 	
 	/**
@@ -118,15 +118,16 @@ class PluginTaskdropProfile extends Profile {
 	 * addRight
 	 *
 	 * @param  Int $ID
+    * @param Int $rightLvl
 	 * @return void
 	 */
-	static function addRight($profiles_id) {
+	static function addRight($profiles_id, $rightLvl) {
 		$_profile = new ProfileRight();
 		foreach (self::$all_profile_rights as $profile_name) {
 			if (!$_profile->find("`profiles_id` = $profiles_id and `name` = '$profile_name'")) {
 				$right['profiles_id'] = $profiles_id ?: $_SESSION['glpiactiveprofile']['id'];
 				$right['name'] = $profile_name;
-				$right['rights'] = READ;
+				$right['rights'] = $rightLvl;
 				$_profile->add($right);
 			}
 		}
@@ -186,7 +187,12 @@ class PluginTaskdropProfile extends Profile {
             'itemtype' => PluginTaskdropCalendar::class,
             'label' => __s('TaskDrop'),
             'field' => 'PluginTaskdropCalendar',
-            'rights' => [READ => __('Read')]
+            'rights' => [
+               READ => __('Read'), 
+               READTASK => __('Plan this task'), 
+               READTICKET => __('Tickets'),
+               READREMINDER => __('Planning reminder')
+            ]
          ),
 		);
 
