@@ -35,12 +35,30 @@
 
 include ("../../../inc/includes.php");
 
-if (!isset($_REQUEST["action"]) && !isset($_GET['ticket_status'])) {
+if (!isset($_REQUEST["action"]) && !isset($_GET['ticket_status']) && !isset($_GET['create_task'])) {
    exit;
 }
 
 if (isset($_GET["ticket_status"])) {
    PluginTaskdropCalendar::showTicketStatusForm();
+}
+
+if (isset($_GET["create_task"])) {
+
+   $end=date("Y-m-d H:i", strtotime($_GET["start"]." +60 minutes"));
+   
+   $params = [
+      'action' => 'create_task',
+      'itemtype' => 'TicketTask',
+      'parentitemtype' => 'Ticket',
+      'parentid' => $_GET["create_task"],
+      'id' => 0,
+      'url' => $CFG_GLPI["root_doc"].'/front/ticket.form.php?id='.$_GET["create_task"],
+      'begin' => $_GET["start"],
+      'end' => $end
+   ];
+
+   PluginTaskdropCalendar::showCreateTaskForm($params);
 }
 
 if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="add_task") {
@@ -69,14 +87,15 @@ if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="add_task") {
 
    $end=($row['actiontime'] >0 ? date("Y-m-d H:i", strtotime($_REQUEST['start']." +".$row['actiontime']." seconds")) : date("Y-m-d H:i", strtotime($_REQUEST['start']." +30 minutes")));
 
-   $event=['title'=>$row['name'],
-            'content'=>$row['content'],
-            'start'=>date("Y-m-d H:i",strtotime($_REQUEST['start'])),
-            'end'=>$end,
-            'url'=>'/front/ticket.form.php?id='.$row['tickets_id'],
-            'itemtype'=>'TicketTask',
-            'items_id'=>$_REQUEST["id"],
-            'state'=>$row['state']
+   $event=[
+      'title'=>$row['name'],
+      'content'=>$row['content'],
+      'start'=>date("Y-m-d H:i",strtotime($_REQUEST['start'])),
+      'end'=>$end,
+      'url'=>'/front/ticket.form.php?id='.$row['tickets_id'],
+      'itemtype'=>'TicketTask',
+      'items_id'=>$_REQUEST["id"],
+      'state'=>$row['state']
    ];
    
    if ($row['actiontime'] >0) {
@@ -90,34 +109,45 @@ if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="add_task") {
    $tickettask->update(['id'=>$_REQUEST["id"],'begin'=>date("Y-m-d H:i",strtotime($_REQUEST['start'])),'end'=>$end,'actiontime'=>$actiontime,'users_id_tech'=>$tickettask->fields['users_id_tech']]);
 
    echo json_encode($event);
-} else {
-   if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="update_task") {
-      $div= PluginTaskdropCalendar::addTask();
-      $div.= PluginTaskdropCalendar::addTicket();
-      $div.=PluginTaskdropCalendar::addReminder();
-      echo $div;
-   }else{
-      if (isset($_REQUEST["action"]) && $_REQUEST["action"]=="add_reminder") {
-         $end=date("Y-m-d H:i", strtotime($_REQUEST['start']." +30 minutes"));
-         $DB->update(
-            'glpi_reminders', [
-               'begin'=>$_REQUEST['start'],
-               'end'=>$end,
-               'is_planned'=>1
-            ], [
-               'id'=>$_REQUEST["id"]
-            ]
-         );
-         $event=[
-            'start'=>$_REQUEST['start'],
-            'end'=>$end,
-            'url'=>'/front/reminder.form.php?id='.$_REQUEST["id"],
-            'itemtype'=>'Reminder',
-            'items_id'=>$_REQUEST["id"],
-            'state'=>1
-         ];
-         echo json_encode($event);
-      }
+
+} elseif (isset($_REQUEST["action"]) && $_REQUEST["action"]=="add_reminder") {
+
+   $end=date("Y-m-d H:i", strtotime($_REQUEST['start']." +30 minutes"));
+   $DB->update(
+      'glpi_reminders', [
+         'begin'=>$_REQUEST['start'],
+         'end'=>$end,
+         'is_planned'=>1
+      ], [
+         'id'=>$_REQUEST["id"]
+      ]
+   );
+   $event=[
+      'start'=>$_REQUEST['start'],
+      'end'=>$end,
+      'url'=>'/front/reminder.form.php?id='.$_REQUEST["id"],
+      'itemtype'=>'Reminder',
+      'items_id'=>$_REQUEST["id"],
+      'state'=>1
+   ];
+   echo json_encode($event);
+
+} elseif (isset($_REQUEST["action"]) && $_REQUEST["action"]=="update_task") {
+
+   $div="";
+
+   if(Session::haveRight(PluginTaskdropCalendar::class, READTASK)) {
+      $div.=PluginTaskdropCalendar::addTask();
    }
+   if(Session::haveRight(PluginTaskdropCalendar::class, READTICKET)) {
+      $div.=PluginTaskdropCalendar::addTicket();
+   }
+   if(Session::haveRight(PluginTaskdropCalendar::class, READREMINDER)) {
+      $div.=PluginTaskdropCalendar::addReminder();
+   }
+
+   echo $div;
+
 }
+
 
