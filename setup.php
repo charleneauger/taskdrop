@@ -32,11 +32,15 @@
  @link      https://tic.gal
  @since     2018
  ---------------------------------------------------------------------- */
-define ('PLUGIN_TASKDROP_VERSION', '1.2.0');
+define ('PLUGIN_TASKDROP_VERSION', '2.0.0');
 // Minimal GLPI version, inclusive
 define("PLUGIN_TASKDROP_MIN_GLPI", "9.5.0");
 // Maximum GLPI version, exclusive
 define("PLUGIN_TASKDROP_MAX_GLPI", "9.6");
+
+define("READTASK", 1024);
+define("READTICKET", 2048);
+define("READREMINDER", 4096);
 
 function plugin_version_taskdrop() {
    return ['name'       => 'TaskDrop',
