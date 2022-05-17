@@ -70,7 +70,7 @@ function plugin_init_taskdrop() {
    // Register profile class
    Plugin::registerClass(PluginTaskdropProfile::class, array('addtabon' => 'Profile'));
 
-   if(Session::haveRight(PluginTaskdropCalendar::class, READ)) {
+   if(Session::haveRight(PluginTaskdropCalendar::class, READ) && strpos($_SERVER['REQUEST_URI'],'planning.php')) {
       $PLUGIN_HOOKS['post_show_tab']['taskdrop']=[PluginTaskdropCalendar::class,'listTask'];
       $PLUGIN_HOOKS['add_javascript']['taskdrop'][] = 'js/calendar.js';
    }
